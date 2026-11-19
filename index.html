@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QuestCreative</title>
+<style>
+:root {
+  --bg:#101318; --card:#1a2027; --line:#303943;
+  --text:#f3f5f7; --muted:#9ba8b4; --green:#6bd67a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
+main{max-width:900px;margin:auto;padding:18px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.brand{font-size:22px;font-weight:900}
+.logo{display:inline-grid;place-items:center;width:38px;height:38px;background:var(--green);color:#07120a;border-radius:12px;margin-left:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:18px;margin-bottom:14px}
+h1{font-size:28px;margin:0 0 8px}
+h2{font-size:19px;margin-top:0}
+p{color:var(--muted);line-height:1.7}
+input{width:100%;padding:13px;border-radius:11px;background:#0e1216;color:white;border:1px solid var(--line);font-size:16px;margin:7px 0 14px}
+button{padding:13px;border:0;border-radius:11px;background:var(--green);color:#08120b;font-weight:800;width:100%;margin:5px 0;cursor:pointer}
+button.secondary{background:#303943;color:white}
+button.danger{background:#46262a;color:#ffc2c5}
+button:disabled{opacity:.5}
+.hidden{display:none!important}
+.msg{min-height:24px;font-size:13px;color:var(--muted);margin-top:8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tag{font-size:12px;color:var(--green)}
+@media(max-width:600px){.grid{grid-template-columns:1fr}main{padding:12px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="brand"><span class="logo">QC</span>QuestCreative</div>
+  <span class="tag">CREATIVE</span>
+</header>
+
+<section class="card">
+  <h1>QuestCreative</h1>
+  <p>اصنع عالمك بطريقتك.</p>
+</section>
+
+<section id="login" class="card">
+  <h2>تسجيل الدخول</h2>
+  <label>البريد الإلكتروني</label>
+  <input id="email" type="email" autocomplete="username" placeholder="Email" dir="ltr">
+  <label>كلمة المرور</label>
+  <input id="password" type="password" autocomplete="current-password" placeholder="Password">
+  <button id="loginBtn">Login</button>
+  <div id="loginMsg" class="msg"></div>
+  <p>لا يوجد إنشاء حساب من الموقع.</p>
+</section>
+
+<section id="app" class="hidden">
+  <section class="card">
+    <div class="grid">
+      <div>
+        <b id="username">Account</b>
+        <p id="role">Player</p>
+      </div>
+      <div><button class="secondary" id="settingsBtn">Settings ⚙️</button></div>
+    </div>
+  </section>
+
+  <section id="home" class="card">
+    <h2>World Menu</h2>
+    <div class="grid">
+      <button id="singleBtn">Single Player</button>
+      <button id="liveBtn" class="secondary">Live Join</button>
+    </div>
+    <p id="worldMsg">Single Player و Live Join سيتم تفعيلهم في تحديث اللعب.</p>
+  </section>
+
+  <section id="settings" class="card hidden">
+    <h2>Settings</h2>
+    <label>كلمة المرور الجديدة</label>
+    <input id="newPass" type="password" autocomplete="new-password" placeholder="New password">
+    <label>تأكيد كلمة المرور</label>
+    <input id="confirmPass" type="password" autocomplete="new-password" placeholder="Confirm password">
+    <button id="changePass">Change Password</button>
+    <div id="passMsg" class="msg"></div>
+
+    <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+
+    <h2>Sessions</h2>
+    <button class="secondary" id="logoutBtn">Logout this device</button>
+    <button class="danger" id="logoutAllBtn">Logout all devices</button>
+    <div id="sessionMsg" class="msg"></div>
+    <button class="secondary" id="backBtn">Back</button>
+  </section>
+
+  <section id="operator" class="card hidden">
+    <h2>Operator</h2>
+    <p class="tag">Operator account verified by Backend</p>
+    <p>سيتم إضافة أدوات إدارة Live Join في التحديث القادم.</p>
+  </section>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== Supabase connection ===== */
+const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL";
+const SUPABASE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY";
+const BACKEND_URL = SUPABASE_URL + "/functions/v1/quest-backend";
+
+const configured =
+  SUPABASE_URL.startsWith("https://") &&
+  !SUPABASE_URL.includes("PASTE_") &&
+  !SUPABASE_KEY.includes("PASTE_");
+
+const sb = configured
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
+const $ = id => document.getElementById(id);
+
+function msg(id, text, good=false) {
+  $(id).textContent = text;
+  $(id).style.color = good ? "#6bd67a" : "#ff9fa6";
+}
+
+function showApp(user, isOperator=false) {
+  $("login").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("settings").classList.add("hidden");
+  $("home").classList.remove("hidden");
+  $("operator").classList.toggle("hidden", !isOperator);
+  $("username").textContent = user.email || "QuestCreative Account";
+  $("role").textContent = isOperator ? "Operator 👑" : "Player";
+}
+
+function showLogin() {
+  $("app").classList.add("hidden");
+  $("login").classList.remove("hidden");
+}
+
+async function backend(action) {
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session) throw new Error("Session expired. Login again.");
+
+  const res = await fetch(BACKEND_URL, {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+session.access_token,
+      "apikey":SUPABASE_KEY
+    },
+    body:JSON.stringify({action})
+  });
+
+  const json = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(json.error || "Backend request failed");
+  return json;
+}
+
+async function showCurrentUser(user) {
+  try {
+    const info = await backend("check-role");
+    showApp(user, info.isOperator === true);
+  } catch {
+    showApp(user, false);
+  }
+}
+
+/* Login */
+$("loginBtn").onclick = async () => {
+  if(!sb) {
+    msg("loginMsg","حط رابط Supabase والمفتاح أولًا.");
+    return;
+  }
+
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  if(!email || !password) return msg("loginMsg","اكتب البريد وكلمة المرور.");
+
+  $("loginBtn").disabled = true;
+  msg("loginMsg","Signing in...");
+
+  const {data,error} = await sb.auth.signInWithPassword({email,password});
+  $("loginBtn").disabled = false;
+
+  if(error) return msg("loginMsg",error.message);
+
+  msg("loginMsg","Logged in.",true);
+  await showCurrentUser(data.user);
+};
+
+/* Change password */
+$("changePass").onclick = async () => {
+  if(!sb) return msg("passMsg","Supabase غير مُعد.");
+
+  const p = $("newPass").value;
+  const c = $("confirmPass").value;
+
+  if(p.length < 8) return msg("passMsg","كلمة المرور 8 أحرف على الأقل.");
+  if(p !== c) return msg("passMsg","كلمتا المرور غير متطابقتين.");
+
+  const {error} = await sb.auth.updateUser({password:p});
+  if(error) return msg("passMsg",error.message);
+
+  $("newPass").value="";
+  $("confirmPass").value="";
+  msg("passMsg","تم تغيير كلمة المرور.",true);
+};
+
+/* Logout current device */
+$("logoutBtn").onclick = async () => {
+  if(sb) await sb.auth.signOut({scope:"local"});
+  showLogin();
+  msg("loginMsg","تم تسجيل الخروج.",true);
+};
+
+/* Logout all devices */
+$("logoutAllBtn").onclick = async () => {
+  try {
+    msg("sessionMsg","جاري إلغاء الجلسات...");
+    await backend("signout-all");
+    await sb.auth.signOut({scope:"local"});
+    showLogin();
+    msg("loginMsg","تم إلغاء جلسات الحساب. سجّل دخول من جديد.",true);
+  } catch(e) {
+    msg("sessionMsg",e.message);
+  }
+};
+
+/* Settings navigation */
+$("settingsBtn").onclick=()=>{
+  $("home").classList.add("hidden");
+  $("operator").classList.add("hidden");
+  $("settings").classList.remove("hidden");
+};
+$("backBtn").onclick=()=>{
+  $("settings").classList.add("hidden");
+  $("home").classList.remove("hidden");
+};
+
+/* Game placeholders */
+$("singleBtn").onclick=()=>msg("worldMsg","نظام العالم سيتم إضافته في إصدار اللعب.");
+$("liveBtn").onclick=()=>msg("worldMsg","Live Join قيد التطوير.");
+
+/* Auto session */
+(async()=>{
+  if(!sb) return showLogin();
+  const {data:{session}}=await sb.auth.getSession();
+  if(session) await showCurrentUser(session.user);
+  else showLogin();
+})();
+
+sb?.auth.onAuthStateChange((_event,session)=>{
+  if(!session) showLogin();
+});
+</script>
+</body>
+</html>
